@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Build & release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          COMMIT="${GITHUB_SHA::8}"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          OUTPUT="dist/dynamoctl-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext || '' }}"
+          mkdir -p dist
+          go build -trimpath \
+            -ldflags "-X 'github.com/ffreis/dynamoctl/cmd.version=${VERSION}' \
+                      -X 'github.com/ffreis/dynamoctl/cmd.commit=${COMMIT}' \
+                      -X 'github.com/ffreis/dynamoctl/cmd.buildTime=${BUILD_TIME}'" \
+            -o "${OUTPUT}" .
+          sha256sum "${OUTPUT}" >> dist/checksums.txt
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/dynamoctl-*
+            dist/checksums.txt

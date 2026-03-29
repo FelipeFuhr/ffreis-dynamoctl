@@ -1,0 +1,21 @@
+# Binary
+dynamoctl
+dynamoctl-*
+
+# Test artefacts
+coverage.out
+coverage.html
+
+# Go build cache
+vendor/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,159 @@
+// Package cmd contains all dynamoctl CLI commands.
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+
+	awsconfig "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/spf13/cobra"
+
+	platformaws "github.com/ffreis/dynamoctl/internal/aws"
+	appcfg "github.com/ffreis/dynamoctl/internal/config"
+	"github.com/ffreis/dynamoctl/internal/store"
+)
+
+// Build-time variables injected via -ldflags.
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildTime = "unknown"
+)
+
+// global flag values — set by cobra PersistentFlags.
+var (
+	flagTable         string
+	flagNamespace     string
+	flagRegion        string
+	flagProfile       string
+	flagEncryptionKey string
+	flagJSON          bool
+	flagLogLevel      string
+)
+
+// rootCmd is the top-level command.
+var rootCmd = &cobra.Command{
+	Use:   "dynamoctl",
+	Short: "Encrypted key-value store backed by DynamoDB",
+	Long: `dynamoctl manages encrypted secrets and configuration values in DynamoDB.
+
+Values are encrypted with AES-256-GCM before storage — no KMS or external
+key management is required. Supply the same key at read time to decrypt.
+
+Encryption key:
+  Set DYNAMOCTL_KEY to a 64-character hex string (32 bytes):
+    export DYNAMOCTL_KEY=$(openssl rand -hex 32)
+  Or pass --encryption-key on every call.
+
+Quick start:
+  dynamoctl set  myapp/api-key ghp_xxxx
+  dynamoctl get  myapp/api-key
+  dynamoctl list
+  dynamoctl backup  --bucket my-backups
+  dynamoctl restore --bucket my-backups --key dynamoctl-backups/...
+`,
+	SilenceUsage:  true,
+	SilenceErrors: true,
+}
+
+// Execute runs the root command. Called by main.
+func Execute() error {
+	return rootCmd.Execute()
+}
+
+func init() {
+	rootCmd.PersistentPreRunE = setupLogger
+
+	f := rootCmd.PersistentFlags()
+	f.StringVarP(&flagTable, "table", "t",
+		envOrDefault(appcfg.EnvTable, appcfg.DefaultTableName),
+		"DynamoDB table name (env: "+appcfg.EnvTable+")")
+	f.StringVarP(&flagNamespace, "namespace", "n",
+		envOrDefault(appcfg.EnvNamespace, appcfg.DefaultNamespace),
+		"Key namespace (env: "+appcfg.EnvNamespace+")")
+	f.StringVarP(&flagRegion, "region", "r",
+		envOrDefault(appcfg.EnvAWSRegion, platformaws.DefaultRegionUSEast1),
+		"AWS region (env: "+appcfg.EnvAWSRegion+")")
+	f.StringVarP(&flagProfile, "profile", "p",
+		os.Getenv("AWS_PROFILE"),
+		"AWS CLI profile (env: AWS_PROFILE)")
+	f.StringVar(&flagEncryptionKey, "encryption-key",
+		os.Getenv(appcfg.EnvKey),
+		"AES-256 key as 64-char hex string (env: "+appcfg.EnvKey+")")
+	f.BoolVar(&flagJSON, "json", false, "Output as JSON")
+	f.StringVar(&flagLogLevel, "log-level", "info",
+		"Log level: debug, info, warn, error")
+
+	rootCmd.AddCommand(
+		newSetCmd(),
+		newGetCmd(),
+		newListCmd(),
+		newDeleteCmd(),
+		newRotateCmd(),
+		newBackupCmd(),
+		newRestoreCmd(),
+		newVersionCmd(),
+	)
+}
+
+// setupLogger initialises the global slog logger from the --log-level flag.
+func setupLogger(_ *cobra.Command, _ []string) error {
+	var level slog.Level
+	switch flagLogLevel {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+	return nil
+}
+
+// newAWSStore builds the DynamoDB store from global flags.
+func newAWSStore(ctx context.Context) (*store.DynamoStore, error) {
+	cfg, err := newAWSConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return store.New(awsdynamodb.NewFromConfig(cfg), flagTable), nil
+}
+
+// newAWSS3Client builds an S3 client from global flags.
+func newAWSS3Client(ctx context.Context) (*awss3.Client, error) {
+	cfg, err := newAWSConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return awss3.NewFromConfig(cfg), nil
+}
+
+// newAWSConfig builds an aws.Config from global flags.
+func newAWSConfig(ctx context.Context) (awsconfig.Config, error) {
+	opts := []func(*config.LoadOptions) error{
+		config.WithRegion(flagRegion),
+	}
+	if flagProfile != "" {
+		opts = append(opts, config.WithSharedConfigProfile(flagProfile))
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		return awsconfig.Config{}, fmt.Errorf("loading AWS config: %w", err)
+	}
+	return cfg, nil
+}
+
+func envOrDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
