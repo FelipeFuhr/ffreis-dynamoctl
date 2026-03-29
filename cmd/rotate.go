@@ -87,7 +87,7 @@ type rotateResult struct {
 	failed  int
 }
 
-func parseRotateKeys(currentKey, newKey string) (oldKey crypto.Key, parsedNewKey crypto.Key, err error) {
+func parseRotateKeys(currentKey, newKey string) (oldKey, parsedNewKey crypto.Key, err error) {
 	if currentKey == "" {
 		return crypto.Key{}, crypto.Key{}, fmt.Errorf("current encryption key required: set DYNAMOCTL_KEY or use --encryption-key")
 	}
