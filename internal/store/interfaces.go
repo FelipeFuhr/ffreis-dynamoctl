@@ -32,6 +32,11 @@ type Store interface {
 	// only if its current version equals expectedVersion.
 	// Used by rotate to prevent lost updates.
 	UpdateEncrypted(ctx context.Context, namespace, name, newValue string, expectedVersion int) error
+
+	// Restore writes an item preserving its original metadata (Version, CreatedAt,
+	// UpdatedAt). Unlike Put, it does not auto-assign version or timestamps.
+	// Intended for use during backup restoration.
+	Restore(ctx context.Context, item Item) error
 }
 
 // DynamoDBClient is the subset of *dynamodb.Client used by DynamoStore.

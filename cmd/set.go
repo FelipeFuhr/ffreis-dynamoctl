@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -84,16 +83,11 @@ func resolveSetValue(stdin io.Reader, useStdin bool, args []string) (string, err
 }
 
 func readStdinValue(r io.Reader) (string, error) {
-	scanner := bufio.NewScanner(r)
-	var sb strings.Builder
-	for scanner.Scan() {
-		sb.WriteString(scanner.Text())
-		sb.WriteByte('\n')
-	}
-	if err := scanner.Err(); err != nil {
+	data, err := io.ReadAll(r)
+	if err != nil {
 		return "", fmt.Errorf("reading stdin: %w", err)
 	}
-	return strings.TrimRight(sb.String(), "\n"), nil
+	return strings.TrimRight(string(data), "\n"), nil
 }
 
 func encryptValue(rawValue string, noEncrypt bool, encryptionKey string) (string, bool, error) {
