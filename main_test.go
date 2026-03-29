@@ -32,7 +32,9 @@ func TestMainRunsVersion(t *testing.T) {
 	os.Stdout = wOut
 	os.Stderr = wErr
 	os.Args = []string{"dynamoctl", "version"}
-	exit = func(int) {}
+	exit = func(int) {
+		// Stubbed to prevent os.Exit from terminating the test process.
+	}
 
 	main()
 

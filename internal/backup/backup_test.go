@@ -34,8 +34,30 @@ func (f *fakeStore) Put(_ context.Context, item *store.Item) error {
 	if item == nil {
 		return errors.New("nil item")
 	}
+
+	now := time.Now().UTC()
+	k := f.key(item.Namespace, item.Name)
+	existing := f.items[k]
+
 	cp := *item
-	f.items[f.key(item.Namespace, item.Name)] = &cp
+	if existing == nil {
+		if cp.Version == 0 {
+			cp.Version = 1
+		}
+		if cp.CreatedAt.IsZero() {
+			cp.CreatedAt = now
+		}
+	} else {
+		if cp.Version == 0 {
+			cp.Version = existing.Version + 1
+		}
+		if cp.CreatedAt.IsZero() {
+			cp.CreatedAt = existing.CreatedAt
+		}
+	}
+	cp.UpdatedAt = now
+
+	f.items[k] = &cp
 	return nil
 }
 
@@ -345,7 +367,7 @@ func TestRestorePropagatesS3Error(t *testing.T) {
 	}
 }
 
-func TestRestore_PreservesMetadata(t *testing.T) {
+func TestRestorePreservesMetadata(t *testing.T) {
 	src := newFakeStore()
 	createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	updatedAt := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
