@@ -7,56 +7,62 @@ import (
 	"github.com/ffreis/dynamoctl/internal/crypto"
 )
 
-func TestResolveSetValue_FromArgs(t *testing.T) {
+const (
+	errFmtResolveSetValue = "resolveSetValue: %v"
+	errFmtEncryptValue    = "encryptValue: %v"
+	wantGotFmt            = "expected %q, got %q"
+)
+
+func TestResolveSetValueFromArgs(t *testing.T) {
 	got, err := resolveSetValue(bytes.NewBufferString("ignored"), false, []string{"k", "v"})
 	if err != nil {
-		t.Fatalf("resolveSetValue: %v", err)
+		t.Fatalf(errFmtResolveSetValue, err)
 	}
 	if got != "v" {
-		t.Fatalf("expected %q, got %q", "v", got)
+		t.Fatalf(wantGotFmt, "v", got)
 	}
 }
 
-func TestResolveSetValue_FromStdinFlag(t *testing.T) {
+func TestResolveSetValueFromStdinFlag(t *testing.T) {
 	got, err := resolveSetValue(bytes.NewBufferString("a\nb\n"), true, []string{"k"})
 	if err != nil {
-		t.Fatalf("resolveSetValue: %v", err)
+		t.Fatalf(errFmtResolveSetValue, err)
 	}
 	if got != "a\nb" {
-		t.Fatalf("expected %q, got %q", "a\nb", got)
+		t.Fatalf(wantGotFmt, "a\nb", got)
 	}
 }
 
-func TestResolveSetValue_FromDashArg(t *testing.T) {
+func TestResolveSetValueFromDashArg(t *testing.T) {
 	got, err := resolveSetValue(bytes.NewBufferString("x\n"), false, []string{"k", "-"})
 	if err != nil {
-		t.Fatalf("resolveSetValue: %v", err)
+		t.Fatalf(errFmtResolveSetValue, err)
 	}
 	if got != "x" {
-		t.Fatalf("expected %q, got %q", "x", got)
+		t.Fatalf(wantGotFmt, "x", got)
 	}
 }
 
-func TestEncryptValue_NoEncrypt(t *testing.T) {
+func TestEncryptValueNoEncrypt(t *testing.T) {
 	got, encrypted, err := encryptValue("v", true, "")
 	if err != nil {
-		t.Fatalf("encryptValue: %v", err)
+		t.Fatalf(errFmtEncryptValue, err)
 	}
 	if encrypted {
 		t.Fatal("expected encrypted=false")
 	}
 	if got != "v" {
-		t.Fatalf("expected %q, got %q", "v", got)
+		t.Fatalf(wantGotFmt, "v", got)
 	}
 }
 
-func TestEncryptValue_EncryptsWithKey(t *testing.T) {
+func TestEncryptValueEncryptsWithKey(t *testing.T) {
 	k, _ := crypto.GenerateKey()
 	keyHex := crypto.FormatKey(k)
 
 	ciphertext, encrypted, err := encryptValue("hello", false, keyHex)
 	if err != nil {
-		t.Fatalf("encryptValue: %v", err)
+		t.Fatalf(errFmtEncryptValue, err)
 	}
 	if !encrypted {
 		t.Fatal("expected encrypted=true")
@@ -67,6 +73,6 @@ func TestEncryptValue_EncryptsWithKey(t *testing.T) {
 		t.Fatalf("Decrypt: %v", err)
 	}
 	if string(plain) != "hello" {
-		t.Fatalf("expected %q, got %q", "hello", string(plain))
+		t.Fatalf(wantGotFmt, "hello", string(plain))
 	}
 }

@@ -8,14 +8,13 @@ on:
   schedule:
     - cron: "0 6 * * 1"  # weekly on Monday
 
-permissions:
-  contents: read
-  security-events: write
-
 jobs:
   trivy:
     name: Trivy vulnerability scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +38,8 @@ jobs:
   govulncheck:
     name: govulncheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 

@@ -16,6 +16,8 @@ import (
 // ErrNotFound is returned when an item does not exist in the table.
 var ErrNotFound = errors.New("item not found")
 
+const errMarshallingKeyFmt = "marshalling key: %w"
+
 // DynamoStore implements Store backed by a DynamoDB table.
 //
 // Table schema:
@@ -78,7 +80,7 @@ func (s *DynamoStore) Get(ctx context.Context, namespace, name string) (*Item, e
 		"SK": name,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling key: %w", err)
+		return nil, fmt.Errorf(errMarshallingKeyFmt, err)
 	}
 
 	out, err := s.client.GetItem(ctx, &dynamodb.GetItemInput{
@@ -152,7 +154,7 @@ func (s *DynamoStore) Delete(ctx context.Context, namespace, name string) error 
 		"SK": name,
 	})
 	if err != nil {
-		return fmt.Errorf("marshalling key: %w", err)
+		return fmt.Errorf(errMarshallingKeyFmt, err)
 	}
 
 	_, err = s.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
@@ -176,7 +178,7 @@ func (s *DynamoStore) UpdateEncrypted(ctx context.Context, namespace, name, newV
 		"SK": name,
 	})
 	if err != nil {
-		return fmt.Errorf("marshalling key: %w", err)
+		return fmt.Errorf(errMarshallingKeyFmt, err)
 	}
 
 	now, err := attributevalue.Marshal(time.Now().UTC())

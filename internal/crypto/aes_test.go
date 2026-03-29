@@ -9,7 +9,7 @@ import (
 
 // --- Encrypt / Decrypt ---
 
-func TestEncryptDecrypt_Roundtrip(t *testing.T) {
+func TestEncryptDecryptRoundtrip(t *testing.T) {
 	key := mustGenKey(t)
 	plaintext := []byte("hello, dynamoctl!")
 
@@ -28,7 +28,7 @@ func TestEncryptDecrypt_Roundtrip(t *testing.T) {
 	}
 }
 
-func TestEncryptDecrypt_EmptyPlaintext(t *testing.T) {
+func TestEncryptDecryptEmptyPlaintext(t *testing.T) {
 	key := mustGenKey(t)
 	ciphertext, err := Encrypt([]byte{}, key)
 	if err != nil {
@@ -43,7 +43,7 @@ func TestEncryptDecrypt_EmptyPlaintext(t *testing.T) {
 	}
 }
 
-func TestEncrypt_ProducesUniqueOutputEachCall(t *testing.T) {
+func TestEncryptProducesUniqueOutputEachCall(t *testing.T) {
 	key := mustGenKey(t)
 	plaintext := []byte("same input")
 
@@ -55,7 +55,7 @@ func TestEncrypt_ProducesUniqueOutputEachCall(t *testing.T) {
 	}
 }
 
-func TestDecrypt_WrongKey(t *testing.T) {
+func TestDecryptWrongKey(t *testing.T) {
 	key1 := mustGenKey(t)
 	key2 := mustGenKey(t)
 
@@ -66,7 +66,7 @@ func TestDecrypt_WrongKey(t *testing.T) {
 	}
 }
 
-func TestDecrypt_TamperedCiphertext(t *testing.T) {
+func TestDecryptTamperedCiphertext(t *testing.T) {
 	key := mustGenKey(t)
 	ct, _ := Encrypt([]byte("secret"), key)
 
@@ -81,7 +81,7 @@ func TestDecrypt_TamperedCiphertext(t *testing.T) {
 	}
 }
 
-func TestDecrypt_InvalidBase64(t *testing.T) {
+func TestDecryptInvalidBase64(t *testing.T) {
 	key := mustGenKey(t)
 	_, err := Decrypt("not!valid!base64", key)
 	if err == nil {
@@ -89,7 +89,7 @@ func TestDecrypt_InvalidBase64(t *testing.T) {
 	}
 }
 
-func TestDecrypt_TooShort(t *testing.T) {
+func TestDecryptTooShort(t *testing.T) {
 	key := mustGenKey(t)
 	// 5 bytes — well below nonce (12) + tag (16) minimum.
 	short := base64.StdEncoding.EncodeToString([]byte("short"))
@@ -99,7 +99,7 @@ func TestDecrypt_TooShort(t *testing.T) {
 	}
 }
 
-func TestEncryptDecrypt_LargePayload(t *testing.T) {
+func TestEncryptDecryptLargePayload(t *testing.T) {
 	key := mustGenKey(t)
 	plaintext := []byte(strings.Repeat("A", 1<<20)) // 1 MiB
 
@@ -118,7 +118,7 @@ func TestEncryptDecrypt_LargePayload(t *testing.T) {
 
 // --- ParseKey ---
 
-func TestParseKey_ValidHex(t *testing.T) {
+func TestParseKeyValidHex(t *testing.T) {
 	key := mustGenKey(t)
 	hexStr := FormatKey(key)
 
@@ -131,28 +131,28 @@ func TestParseKey_ValidHex(t *testing.T) {
 	}
 }
 
-func TestParseKey_TooShort(t *testing.T) {
+func TestParseKeyTooShort(t *testing.T) {
 	_, err := ParseKey("deadbeef") // 4 bytes, not 32
 	if err == nil {
 		t.Error("expected error for too-short key")
 	}
 }
 
-func TestParseKey_TooLong(t *testing.T) {
+func TestParseKeyTooLong(t *testing.T) {
 	_, err := ParseKey(strings.Repeat("aa", 33)) // 33 bytes
 	if err == nil {
 		t.Error("expected error for too-long key")
 	}
 }
 
-func TestParseKey_InvalidHex(t *testing.T) {
+func TestParseKeyInvalidHex(t *testing.T) {
 	_, err := ParseKey(strings.Repeat("zz", 32)) // invalid hex chars
 	if err == nil {
 		t.Error("expected error for invalid hex")
 	}
 }
 
-func TestParseKey_Empty(t *testing.T) {
+func TestParseKeyEmpty(t *testing.T) {
 	_, err := ParseKey("")
 	if err == nil {
 		t.Error("expected error for empty key")
@@ -161,7 +161,7 @@ func TestParseKey_Empty(t *testing.T) {
 
 // --- GenerateKey ---
 
-func TestGenerateKey_ProducesUniqueKeys(t *testing.T) {
+func TestGenerateKeyProducesUniqueKeys(t *testing.T) {
 	k1, err1 := GenerateKey()
 	k2, err2 := GenerateKey()
 	if err1 != nil || err2 != nil {
@@ -172,7 +172,7 @@ func TestGenerateKey_ProducesUniqueKeys(t *testing.T) {
 	}
 }
 
-func TestGenerateKey_ParseRoundtrip(t *testing.T) {
+func TestGenerateKeyParseRoundtrip(t *testing.T) {
 	key, _ := GenerateKey()
 	parsed, err := ParseKey(FormatKey(key))
 	if err != nil {

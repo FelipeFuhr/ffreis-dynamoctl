@@ -128,7 +128,7 @@ func (e *errStore) ScanAll(_ context.Context) ([]store.Item, error) {
 // Tests: Dump
 // ---------------------------------------------------------------------------
 
-func TestDump_UploadsSingleNamespace(t *testing.T) {
+func TestDumpUploadsSingleNamespace(t *testing.T) {
 	st := newFakeStore()
 	s3c := newFakeS3()
 	ctx := context.Background()
@@ -154,7 +154,7 @@ func TestDump_UploadsSingleNamespace(t *testing.T) {
 	}
 }
 
-func TestDump_AllNamespaces(t *testing.T) {
+func TestDumpAllNamespaces(t *testing.T) {
 	st := newFakeStore()
 	s3c := newFakeS3()
 	ctx := context.Background()
@@ -171,7 +171,7 @@ func TestDump_AllNamespaces(t *testing.T) {
 	}
 }
 
-func TestDump_ManifestIsValidJSON(t *testing.T) {
+func TestDumpManifestIsValidJSON(t *testing.T) {
 	st := newFakeStore()
 	s3c := newFakeS3()
 	ctx := context.Background()
@@ -202,7 +202,7 @@ func TestDump_ManifestIsValidJSON(t *testing.T) {
 	}
 }
 
-func TestDump_PropagatesScanError(t *testing.T) {
+func TestDumpPropagatesScanError(t *testing.T) {
 	es := &errStore{}
 	s3c := newFakeS3()
 
@@ -212,7 +212,7 @@ func TestDump_PropagatesScanError(t *testing.T) {
 	}
 }
 
-func TestDump_PropagatesS3Error(t *testing.T) {
+func TestDumpPropagatesS3Error(t *testing.T) {
 	st := newFakeStore()
 	_ = st.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey})
 	s3c := newFakeS3()
@@ -228,6 +228,8 @@ func TestDump_PropagatesS3Error(t *testing.T) {
 // Tests: Restore
 // ---------------------------------------------------------------------------
 
+const errFmtRestore = "Restore: %v"
+
 func dumpAndGetKey(t *testing.T, st store.Store, s3c *fakeS3) string {
 	t.Helper()
 	ctx := context.Background()
@@ -236,7 +238,7 @@ func dumpAndGetKey(t *testing.T, st store.Store, s3c *fakeS3) string {
 	return strings.TrimPrefix(uri, "s3://"+testBucket+"/")
 }
 
-func TestRestore_RestoresItems(t *testing.T) {
+func TestRestoreRestoresItems(t *testing.T) {
 	src := newFakeStore()
 	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: "a", Value: "enc-a", Encrypted: true})
 	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: "b", Value: "enc-b", Encrypted: true})
@@ -247,7 +249,7 @@ func TestRestore_RestoresItems(t *testing.T) {
 	dst := newFakeStore()
 	result, err := Restore(context.Background(), dst, s3c, RestoreOptions{Bucket: testBucket, Key: s3Key})
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatalf(errFmtRestore, err)
 	}
 	if result.Restored != 2 {
 		t.Errorf("restored: want 2, got %d", result.Restored)
@@ -257,7 +259,7 @@ func TestRestore_RestoresItems(t *testing.T) {
 	}
 }
 
-func TestRestore_SkipsExistingWithoutOverwrite(t *testing.T) {
+func TestRestoreSkipsExistingWithoutOverwrite(t *testing.T) {
 	src := newFakeStore()
 	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "original"})
 
@@ -274,7 +276,7 @@ func TestRestore_SkipsExistingWithoutOverwrite(t *testing.T) {
 		Overwrite: false,
 	})
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatalf(errFmtRestore, err)
 	}
 	if result.Skipped != 1 {
 		t.Errorf("skipped: want 1, got %d", result.Skipped)
@@ -287,7 +289,7 @@ func TestRestore_SkipsExistingWithoutOverwrite(t *testing.T) {
 	}
 }
 
-func TestRestore_OverwritesWhenEnabled(t *testing.T) {
+func TestRestoreOverwritesWhenEnabled(t *testing.T) {
 	src := newFakeStore()
 	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "backup-val"})
 
@@ -303,14 +305,14 @@ func TestRestore_OverwritesWhenEnabled(t *testing.T) {
 		Overwrite: true,
 	})
 	if err != nil {
-		t.Fatalf("Restore: %v", err)
+		t.Fatalf(errFmtRestore, err)
 	}
 	if result.Restored != 1 {
 		t.Errorf("restored: want 1, got %d", result.Restored)
 	}
 }
 
-func TestRestore_RejectsUnknownFormatVersion(t *testing.T) {
+func TestRestoreRejectsUnknownFormatVersion(t *testing.T) {
 	s3c := newFakeS3()
 	badManifest := `{"format_version":"999","items":[]}`
 	s3c.puts["backup.json"] = []byte(badManifest)
@@ -321,7 +323,7 @@ func TestRestore_RejectsUnknownFormatVersion(t *testing.T) {
 	}
 }
 
-func TestRestore_PropagatesS3Error(t *testing.T) {
+func TestRestorePropagatesS3Error(t *testing.T) {
 	s3c := newFakeS3()
 	s3c.getErr = errors.New("s3 unavailable")
 

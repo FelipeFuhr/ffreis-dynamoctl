@@ -17,13 +17,17 @@ type rotateTestStore struct {
 	conflictOn  map[int]bool
 }
 
-func (s *rotateTestStore) Put(context.Context, store.Item) error              { panic("not used") }
-func (s *rotateTestStore) List(context.Context, string) ([]store.Item, error) { panic("not used") }
-func (s *rotateTestStore) Delete(context.Context, string, string) error       { panic("not used") }
-func (s *rotateTestStore) ScanNamespace(context.Context, string) ([]store.Item, error) {
-	panic("not used")
+const rotateTestNotUsed = "not used"
+
+func (s *rotateTestStore) Put(context.Context, store.Item) error { panic(rotateTestNotUsed) }
+func (s *rotateTestStore) List(context.Context, string) ([]store.Item, error) {
+	panic(rotateTestNotUsed)
 }
-func (s *rotateTestStore) ScanAll(context.Context) ([]store.Item, error) { panic("not used") }
+func (s *rotateTestStore) Delete(context.Context, string, string) error { panic(rotateTestNotUsed) }
+func (s *rotateTestStore) ScanNamespace(context.Context, string) ([]store.Item, error) {
+	panic(rotateTestNotUsed)
+}
+func (s *rotateTestStore) ScanAll(context.Context) ([]store.Item, error) { panic(rotateTestNotUsed) }
 
 func (s *rotateTestStore) Get(_ context.Context, namespace, name string) (*store.Item, error) {
 	if namespace != s.item.Namespace || name != s.item.Name {
@@ -49,7 +53,7 @@ func (s *rotateTestStore) UpdateEncrypted(_ context.Context, namespace, name, ne
 	return nil
 }
 
-func TestParseRotateKeys_RejectsMissingAndSameKey(t *testing.T) {
+func TestParseRotateKeysRejectsMissingAndSameKey(t *testing.T) {
 	_, _, err := parseRotateKeys("", "")
 	if err == nil {
 		t.Fatal("expected error for missing current key")
@@ -69,7 +73,7 @@ func TestParseRotateKeys_RejectsMissingAndSameKey(t *testing.T) {
 	}
 }
 
-func TestUpdateEncryptedWithRetry_ConflictsOnceThenSucceeds(t *testing.T) {
+func TestUpdateEncryptedWithRetryConflictsOnceThenSucceeds(t *testing.T) {
 	oldKey, _ := crypto.GenerateKey()
 	newKey, _ := crypto.GenerateKey()
 
@@ -107,7 +111,7 @@ func TestUpdateEncryptedWithRetry_ConflictsOnceThenSucceeds(t *testing.T) {
 	}
 }
 
-func TestRotateEncryptedItem_WrongKeyFails(t *testing.T) {
+func TestRotateEncryptedItemWrongKeyFails(t *testing.T) {
 	oldKey, _ := crypto.GenerateKey()
 	wrongKey, _ := crypto.GenerateKey()
 	newKey, _ := crypto.GenerateKey()

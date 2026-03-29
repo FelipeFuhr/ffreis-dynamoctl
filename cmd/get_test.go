@@ -7,7 +7,7 @@ import (
 	"github.com/ffreis/dynamoctl/internal/store"
 )
 
-func TestDecryptForGetCmd_NoDecryptWhenRawOrPlaintext(t *testing.T) {
+func TestDecryptForGetCmdNoDecryptWhenRawOrPlaintext(t *testing.T) {
 	item := &store.Item{Encrypted: false, Value: "v"}
 	got, err := decryptForGetCmd(item, false, "")
 	if err != nil {
@@ -27,7 +27,7 @@ func TestDecryptForGetCmd_NoDecryptWhenRawOrPlaintext(t *testing.T) {
 	}
 }
 
-func TestDecryptForGetCmd_Decrypts(t *testing.T) {
+func TestDecryptForGetCmdDecrypts(t *testing.T) {
 	k, _ := crypto.GenerateKey()
 	ct, err := crypto.Encrypt([]byte("hello"), k)
 	if err != nil {

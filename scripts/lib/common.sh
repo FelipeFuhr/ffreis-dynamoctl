@@ -19,6 +19,7 @@ common_info() {
 common_die() {
   common_err "$@"
   exit 1
+  return 1
 }
 
 common_require_git_repo() {
@@ -26,6 +27,7 @@ common_require_git_repo() {
     return 0
   fi
   common_die "This hook must run inside a Git repository."
+  return 1
 }
 
 common_is_allowlisted_path() {
@@ -59,4 +61,5 @@ common_require_file() {
   fi
 
   common_die "$message"
+  return 1
 }

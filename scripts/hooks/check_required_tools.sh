@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Verify that required development tools are available.
 set -euo pipefail
-IFS=$'\n\t'
 
 REQUIRED_TOOLS=(go gofmt golangci-lint lefthook)
 missing=()
@@ -12,7 +11,7 @@ for tool in "${REQUIRED_TOOLS[@]}"; do
   fi
 done
 
-if [ ${#missing[@]} -gt 0 ]; then
+if [[ ${#missing[@]} -gt 0 ]]; then
   echo "Missing required tools: ${missing[*]}" >&2
   echo "Install them before continuing." >&2
   exit 1

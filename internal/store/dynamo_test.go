@@ -128,7 +128,7 @@ func mustMarshalRecord(t *testing.T, rec record) map[string]dbtypes.AttributeVal
 // Tests: Put
 // ---------------------------------------------------------------------------
 
-func TestPut_NewItem_VersionOne(t *testing.T) {
+func TestPutNewItemVersionOne(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 
@@ -151,7 +151,7 @@ func TestPut_NewItem_VersionOne(t *testing.T) {
 	}
 }
 
-func TestPut_ExistingItem_IncrementsVersion(t *testing.T) {
+func TestPutExistingItemIncrementsVersion(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -171,7 +171,7 @@ func TestPut_ExistingItem_IncrementsVersion(t *testing.T) {
 	}
 }
 
-func TestPut_PreservesCreatedAt(t *testing.T) {
+func TestPutPreservesCreatedAt(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -193,7 +193,7 @@ func TestPut_PreservesCreatedAt(t *testing.T) {
 // Tests: Get
 // ---------------------------------------------------------------------------
 
-func TestGet_NotFound(t *testing.T) {
+func TestGetNotFound(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 
@@ -203,7 +203,7 @@ func TestGet_NotFound(t *testing.T) {
 	}
 }
 
-func TestGet_CorrectNamespaceIsolation(t *testing.T) {
+func TestGetCorrectNamespaceIsolation(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -223,7 +223,7 @@ func TestGet_CorrectNamespaceIsolation(t *testing.T) {
 // Tests: List
 // ---------------------------------------------------------------------------
 
-func TestList_ReturnsAllItemsInNamespace(t *testing.T) {
+func TestListReturnsAllItemsInNamespace(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -241,7 +241,7 @@ func TestList_ReturnsAllItemsInNamespace(t *testing.T) {
 	}
 }
 
-func TestList_EmptyNamespace(t *testing.T) {
+func TestListEmptyNamespace(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 
@@ -258,7 +258,7 @@ func TestList_EmptyNamespace(t *testing.T) {
 // Tests: Delete
 // ---------------------------------------------------------------------------
 
-func TestDelete_RemovesItem(t *testing.T) {
+func TestDeleteRemovesItem(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -274,7 +274,7 @@ func TestDelete_RemovesItem(t *testing.T) {
 	}
 }
 
-func TestDelete_Idempotent(t *testing.T) {
+func TestDeleteIdempotent(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -289,7 +289,7 @@ func TestDelete_Idempotent(t *testing.T) {
 // Tests: ScanAll
 // ---------------------------------------------------------------------------
 
-func TestScanAll_ReturnsAllNamespaces(t *testing.T) {
+func TestScanAllReturnsAllNamespaces(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -311,7 +311,7 @@ func TestScanAll_ReturnsAllNamespaces(t *testing.T) {
 // Tests: UpdateEncrypted
 // ---------------------------------------------------------------------------
 
-func TestUpdateEncrypted_SuccessOnMatchingVersion(t *testing.T) {
+func TestUpdateEncryptedSuccessOnMatchingVersion(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -333,7 +333,7 @@ func TestUpdateEncrypted_SuccessOnMatchingVersion(t *testing.T) {
 	}
 }
 
-func TestUpdateEncrypted_FailsOnVersionMismatch(t *testing.T) {
+func TestUpdateEncryptedFailsOnVersionMismatch(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 	ctx := context.Background()
@@ -387,7 +387,7 @@ func TestRecordToItemRoundtrip(t *testing.T) {
 // Tests: Put error propagation
 // ---------------------------------------------------------------------------
 
-func TestPut_PropagatesDynamoError(t *testing.T) {
+func TestPutPropagatesDynamoError(t *testing.T) {
 	db := newMemDB()
 	db.putErr = errors.New("dynamo unavailable")
 	s := newTestStore(db)

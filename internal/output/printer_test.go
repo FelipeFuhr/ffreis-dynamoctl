@@ -10,6 +10,12 @@ import (
 	"github.com/ffreis/dynamoctl/internal/store"
 )
 
+const (
+	testKeyAPIKey     = "api-key"
+	actionWantGotFmt  = "action: want %s, got %v"
+	wantProdAPIKeyFmt = "prod/" + testKeyAPIKey
+)
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -28,29 +34,29 @@ func decodeJSON(t *testing.T, buf *bytes.Buffer, v any) {
 // PrintSetResult
 // ---------------------------------------------------------------------------
 
-func TestPrintSetResult_Text(t *testing.T) {
+func TestPrintSetResultText(t *testing.T) {
 	var buf bytes.Buffer
-	if err := textPrinter(&buf).PrintSetResult(testNamespaceProd, "api-key", 3); err != nil {
+	if err := textPrinter(&buf).PrintSetResult(testNamespaceProd, testKeyAPIKey, 3); err != nil {
 		t.Fatalf("PrintSetResult: %v", err)
 	}
 	got := buf.String()
-	if !strings.Contains(got, "prod/api-key") {
-		t.Errorf("want 'prod/api-key' in output, got %q", got)
+	if !strings.Contains(got, wantProdAPIKeyFmt) {
+		t.Errorf("want %q in output, got %q", wantProdAPIKeyFmt, got)
 	}
 	if !strings.Contains(got, "3") {
 		t.Errorf("want version 3 in output, got %q", got)
 	}
 }
 
-func TestPrintSetResult_JSON(t *testing.T) {
+func TestPrintSetResultJSON(t *testing.T) {
 	var buf bytes.Buffer
-	if err := jsonPrinter(&buf).PrintSetResult(testNamespaceProd, "api-key", 3); err != nil {
+	if err := jsonPrinter(&buf).PrintSetResult(testNamespaceProd, testKeyAPIKey, 3); err != nil {
 		t.Fatalf("PrintSetResult JSON: %v", err)
 	}
 	var m map[string]any
 	decodeJSON(t, &buf, &m)
 	if m[jsonKeyAction] != actionSet {
-		t.Errorf("action: want %s, got %v", actionSet, m[jsonKeyAction])
+		t.Errorf(actionWantGotFmt, actionSet, m[jsonKeyAction])
 	}
 	if m[jsonKeyNamespace] != testNamespaceProd {
 		t.Errorf("namespace: want %s, got %v", testNamespaceProd, m[jsonKeyNamespace])
@@ -61,7 +67,7 @@ func TestPrintSetResult_JSON(t *testing.T) {
 // PrintDeleteResult
 // ---------------------------------------------------------------------------
 
-func TestPrintDeleteResult_Text(t *testing.T) {
+func TestPrintDeleteResultText(t *testing.T) {
 	var buf bytes.Buffer
 	_ = textPrinter(&buf).PrintDeleteResult("default", "mykey")
 	if !strings.Contains(buf.String(), "default/mykey") {
@@ -69,13 +75,13 @@ func TestPrintDeleteResult_Text(t *testing.T) {
 	}
 }
 
-func TestPrintDeleteResult_JSON(t *testing.T) {
+func TestPrintDeleteResultJSON(t *testing.T) {
 	var buf bytes.Buffer
 	_ = jsonPrinter(&buf).PrintDeleteResult("default", "mykey")
 	var m map[string]any
 	decodeJSON(t, &buf, &m)
 	if m[jsonKeyAction] != actionDeleted {
-		t.Errorf("action: want %s, got %v", actionDeleted, m[jsonKeyAction])
+		t.Errorf(actionWantGotFmt, actionDeleted, m[jsonKeyAction])
 	}
 }
 
@@ -83,7 +89,7 @@ func TestPrintDeleteResult_JSON(t *testing.T) {
 // PrintGetResult
 // ---------------------------------------------------------------------------
 
-func TestPrintGetResult_TextPrintsValue(t *testing.T) {
+func TestPrintGetResultTextPrintsValue(t *testing.T) {
 	var buf bytes.Buffer
 	item := &store.Item{Namespace: "ns", Name: "key", Value: "encrypted-blob", Encrypted: true}
 	_ = textPrinter(&buf).PrintGetResult(item, "decrypted-secret")
@@ -95,7 +101,7 @@ func TestPrintGetResult_TextPrintsValue(t *testing.T) {
 	}
 }
 
-func TestPrintGetResult_TextUsesRawValueWhenNoDecryption(t *testing.T) {
+func TestPrintGetResultTextUsesRawValueWhenNoDecryption(t *testing.T) {
 	var buf bytes.Buffer
 	item := &store.Item{Namespace: "ns", Name: "key", Value: "plaintext"}
 	_ = textPrinter(&buf).PrintGetResult(item, "")
@@ -106,7 +112,7 @@ func TestPrintGetResult_TextUsesRawValueWhenNoDecryption(t *testing.T) {
 	}
 }
 
-func TestPrintGetResult_JSON(t *testing.T) {
+func TestPrintGetResultJSON(t *testing.T) {
 	var buf bytes.Buffer
 	now := time.Now().UTC()
 	item := &store.Item{
@@ -131,7 +137,7 @@ func TestPrintGetResult_JSON(t *testing.T) {
 // PrintListResult
 // ---------------------------------------------------------------------------
 
-func TestPrintListResult_TextEmpty(t *testing.T) {
+func TestPrintListResultTextEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	_ = textPrinter(&buf).PrintListResult(nil)
 	if !strings.Contains(buf.String(), "no items") {
@@ -139,11 +145,11 @@ func TestPrintListResult_TextEmpty(t *testing.T) {
 	}
 }
 
-func TestPrintListResult_TextShowsHeader(t *testing.T) {
+func TestPrintListResultTextShowsHeader(t *testing.T) {
 	var buf bytes.Buffer
 	items := []store.Item{
 		{Namespace: testNamespaceProd, Name: "db-pass", Encrypted: true, Version: 5},
-		{Namespace: testNamespaceProd, Name: "api-key", Encrypted: false, Version: 1},
+		{Namespace: testNamespaceProd, Name: testKeyAPIKey, Encrypted: false, Version: 1},
 	}
 	_ = textPrinter(&buf).PrintListResult(items)
 	out := buf.String()
@@ -155,7 +161,7 @@ func TestPrintListResult_TextShowsHeader(t *testing.T) {
 	}
 }
 
-func TestPrintListResult_JSONReturnsArray(t *testing.T) {
+func TestPrintListResultJSONReturnsArray(t *testing.T) {
 	var buf bytes.Buffer
 	items := []store.Item{
 		{Namespace: "ns", Name: "a", Encrypted: true, Version: 1},
@@ -180,7 +186,7 @@ func TestPrintListResult_JSONReturnsArray(t *testing.T) {
 // PrintRotateResult
 // ---------------------------------------------------------------------------
 
-func TestPrintRotateResult_Text(t *testing.T) {
+func TestPrintRotateResultText(t *testing.T) {
 	var buf bytes.Buffer
 	_ = textPrinter(&buf).PrintRotateResult(testNamespaceProd, 10, 3, 1)
 	out := buf.String()
@@ -189,13 +195,13 @@ func TestPrintRotateResult_Text(t *testing.T) {
 	}
 }
 
-func TestPrintRotateResult_JSON(t *testing.T) {
+func TestPrintRotateResultJSON(t *testing.T) {
 	var buf bytes.Buffer
 	_ = jsonPrinter(&buf).PrintRotateResult(testNamespaceProd, 10, 3, 1)
 	var m map[string]any
 	decodeJSON(t, &buf, &m)
 	if m[jsonKeyAction] != actionRotate {
-		t.Errorf("action: want %s, got %v", actionRotate, m[jsonKeyAction])
+		t.Errorf(actionWantGotFmt, actionRotate, m[jsonKeyAction])
 	}
 	if int(m[jsonKeyRotated].(float64)) != 10 {
 		t.Errorf("rotated: want 10, got %v", m[jsonKeyRotated])
@@ -206,7 +212,7 @@ func TestPrintRotateResult_JSON(t *testing.T) {
 // PrintBackupResult
 // ---------------------------------------------------------------------------
 
-func TestPrintBackupResult_Text(t *testing.T) {
+func TestPrintBackupResultText(t *testing.T) {
 	var buf bytes.Buffer
 	_ = textPrinter(&buf).PrintBackupResult("s3://bucket/key.json", 42)
 	out := buf.String()
@@ -215,7 +221,7 @@ func TestPrintBackupResult_Text(t *testing.T) {
 	}
 }
 
-func TestPrintBackupResult_JSON(t *testing.T) {
+func TestPrintBackupResultJSON(t *testing.T) {
 	var buf bytes.Buffer
 	_ = jsonPrinter(&buf).PrintBackupResult("s3://b/k", 7)
 	var m map[string]any
@@ -229,7 +235,7 @@ func TestPrintBackupResult_JSON(t *testing.T) {
 // PrintRestoreResult
 // ---------------------------------------------------------------------------
 
-func TestPrintRestoreResult_Text(t *testing.T) {
+func TestPrintRestoreResultText(t *testing.T) {
 	var buf bytes.Buffer
 	_ = textPrinter(&buf).PrintRestoreResult(5, 2, []string{"err1"})
 	out := buf.String()
@@ -238,7 +244,7 @@ func TestPrintRestoreResult_Text(t *testing.T) {
 	}
 }
 
-func TestPrintRestoreResult_JSONIncludesErrors(t *testing.T) {
+func TestPrintRestoreResultJSONIncludesErrors(t *testing.T) {
 	var buf bytes.Buffer
 	_ = jsonPrinter(&buf).PrintRestoreResult(3, 0, []string{"failed x", "failed y"})
 	var m map[string]any
