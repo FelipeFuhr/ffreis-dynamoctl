@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 )
 
-func TestNewAWSConfig_WrapsLoaderErrors(t *testing.T) {
+func TestNewAWSConfigWrapsLoaderErrors(t *testing.T) {
 	origLoader := loadDefaultConfig
 	defer func() { loadDefaultConfig = origLoader }()
 
@@ -27,7 +27,7 @@ func TestNewAWSConfig_WrapsLoaderErrors(t *testing.T) {
 	}
 }
 
-func TestNewAWSStoreAndS3Client_ConstructWithStubConfig(t *testing.T) {
+func TestNewAWSStoreAndS3ClientConstructWithStubConfig(t *testing.T) {
 	origLoader := loadDefaultConfig
 	defer func() { loadDefaultConfig = origLoader }()
 

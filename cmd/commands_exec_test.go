@@ -91,6 +91,11 @@ func newMemS3() *memS3 {
 	return &memS3{puts: make(map[string][]byte)}
 }
 
+const (
+	errFmtExecute       = "Execute: %v"
+	errFmtUnexpectedOut = "unexpected output: %q"
+)
+
 func (m *memS3) PutObject(_ context.Context, params *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 	body, _ := io.ReadAll(params.Body)
 	m.puts[*params.Key] = body
@@ -128,7 +133,7 @@ func TestStoreAndGetVersion(t *testing.T) {
 	}
 }
 
-func TestListCmd_Execute(t *testing.T) {
+func TestListCmdExecute(t *testing.T) {
 	origStoreFactory := storeFactory
 	defer func() { storeFactory = origStoreFactory }()
 
@@ -157,14 +162,14 @@ func TestListCmd_Execute(t *testing.T) {
 	cmd.SetArgs([]string{})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if !strings.Contains(out.String(), "NAMESPACE") {
 		t.Fatalf("expected table output, got: %q", out.String())
 	}
 }
 
-func TestDeleteCmd_ForceSkipsPrecheck(t *testing.T) {
+func TestDeleteCmdForceSkipsPrecheck(t *testing.T) {
 	origStoreFactory := storeFactory
 	defer func() { storeFactory = origStoreFactory }()
 
@@ -195,17 +200,17 @@ func TestDeleteCmd_ForceSkipsPrecheck(t *testing.T) {
 	cmd.SetArgs([]string{"--force", "k"})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if !deleted {
 		t.Fatal("expected Delete to be called")
 	}
 	if !strings.Contains(out.String(), "deleted prod/k") {
-		t.Fatalf("unexpected output: %q", out.String())
+		t.Fatalf(errFmtUnexpectedOut, out.String())
 	}
 }
 
-func TestGetCmd_DecryptsEncryptedItem(t *testing.T) {
+func TestGetCmdDecryptsEncryptedItem(t *testing.T) {
 	origStoreFactory := storeFactory
 	defer func() { storeFactory = origStoreFactory }()
 
@@ -243,14 +248,14 @@ func TestGetCmd_DecryptsEncryptedItem(t *testing.T) {
 	cmd.SetArgs([]string{"api-key"})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if strings.TrimSpace(out.String()) != "hello" {
 		t.Fatalf("expected decrypted output, got: %q", out.String())
 	}
 }
 
-func TestSetCmd_NoEncrypt(t *testing.T) {
+func TestSetCmdNoEncrypt(t *testing.T) {
 	origStoreFactory := storeFactory
 	defer func() { storeFactory = origStoreFactory }()
 
@@ -277,17 +282,17 @@ func TestSetCmd_NoEncrypt(t *testing.T) {
 	cmd.SetArgs([]string{"--no-encrypt", "k", "v"})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if stored.Value != "v" || stored.Encrypted {
 		t.Fatalf("unexpected stored item: %+v", stored)
 	}
 	if !strings.Contains(out.String(), "set prod/k (version 3)") {
-		t.Fatalf("unexpected output: %q", out.String())
+		t.Fatalf(errFmtUnexpectedOut, out.String())
 	}
 }
 
-func TestRotateCmd_RotatesSingleItem(t *testing.T) {
+func TestRotateCmdRotatesSingleItem(t *testing.T) {
 	origStoreFactory := storeFactory
 	defer func() { storeFactory = origStoreFactory }()
 
@@ -335,17 +340,17 @@ func TestRotateCmd_RotatesSingleItem(t *testing.T) {
 	cmd.SetArgs([]string{"--new-key", crypto.FormatKey(newKey)})
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if updateCalls != 1 {
 		t.Fatalf("expected 1 update call, got %d", updateCalls)
 	}
 	if !strings.Contains(out.String(), "rotated 1 items") {
-		t.Fatalf("unexpected output: %q", out.String())
+		t.Fatalf(errFmtUnexpectedOut, out.String())
 	}
 }
 
-func TestBackupAndRestoreCmds_Success(t *testing.T) {
+func TestBackupAndRestoreCmdsSuccess(t *testing.T) {
 	origStoreFactory := storeFactory
 	origS3Factory := s3ClientFactory
 	defer func() {
@@ -390,7 +395,7 @@ func TestBackupAndRestoreCmds_Success(t *testing.T) {
 		t.Fatalf("backup Execute: %v", err)
 	}
 	if !strings.Contains(backupOut.String(), "backup complete: s3://bkt/") {
-		t.Fatalf("unexpected backup output: %q", backupOut.String())
+		t.Fatalf(errFmtUnexpectedOut, backupOut.String())
 	}
 
 	// Find the generated key so restore can read it.
@@ -410,17 +415,17 @@ func TestBackupAndRestoreCmds_Success(t *testing.T) {
 	restoreCmd.SetArgs([]string{"--bucket", "bkt", "--key", dumpedKey, "--overwrite"})
 
 	if err := restoreCmd.Execute(); err != nil {
-		t.Fatalf("restore Execute: %v", err)
+		t.Fatalf("restore "+errFmtExecute, err)
 	}
 	if restored != 1 {
 		t.Fatalf("expected 1 restored item, got %d", restored)
 	}
 	if !strings.Contains(restoreOut.String(), "restore complete: 1 restored") {
-		t.Fatalf("unexpected restore output: %q", restoreOut.String())
+		t.Fatalf(errFmtUnexpectedOut, restoreOut.String())
 	}
 }
 
-func TestVersionCmd_TextAndJSON(t *testing.T) {
+func TestVersionCmdTextAndJSON(t *testing.T) {
 	flagJSON = false
 	var out bytes.Buffer
 	cmd := newVersionCmd()
@@ -428,10 +433,10 @@ func TestVersionCmd_TextAndJSON(t *testing.T) {
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{})
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if !strings.Contains(out.String(), "dynamoctl") {
-		t.Fatalf("unexpected output: %q", out.String())
+		t.Fatalf(errFmtUnexpectedOut, out.String())
 	}
 
 	flagJSON = true
@@ -441,7 +446,7 @@ func TestVersionCmd_TextAndJSON(t *testing.T) {
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{})
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("Execute: %v", err)
+		t.Fatalf(errFmtExecute, err)
 	}
 	if !strings.Contains(out.String(), "\"version\"") {
 		t.Fatalf("unexpected JSON output: %q", out.String())
