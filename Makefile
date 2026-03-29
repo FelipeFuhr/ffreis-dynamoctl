@@ -1,14 +1,14 @@
 BINARY      := dynamoctl
 MODULE      := github.com/ffreis/dynamoctl
+GO          ?= $(shell command -v go 2>/dev/null || echo /usr/local/go/bin/go)
 VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME  ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS     := -ldflags "-X '$(MODULE)/cmd.version=$(VERSION)' \
                           -X '$(MODULE)/cmd.commit=$(COMMIT)' \
-                          -X '$(MODULE)/cmd.buildTime=$(BUILD_TIME)' \
-                          -trimpath"
+                          -X '$(MODULE)/cmd.buildTime=$(BUILD_TIME)'"
 COVERAGE_THRESHOLD := 80
-GOTEST      := go test -timeout 60s -race
+GOTEST      := $(GO) test -timeout 60s -race
 
 .PHONY: all build test lint fmt fmt-check tidy coverage coverage-gate \
         lefthook-install clean smoke help
@@ -18,7 +18,7 @@ all: fmt-check lint test build  ## Run all quality gates and build
 ## ── Build ──────────────────────────────────────────────────────────────────
 
 build:  ## Build the binary
-	go build $(LDFLAGS) -o $(BINARY) .
+	$(GO) build -trimpath $(LDFLAGS) -o $(BINARY) .
 
 ## ── Testing ────────────────────────────────────────────────────────────────
 
@@ -27,12 +27,12 @@ test:  ## Run all unit tests
 
 coverage:  ## Generate HTML coverage report
 	$(GOTEST) -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
+	$(GO) tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
 coverage-gate:  ## Fail if total coverage is below $(COVERAGE_THRESHOLD)%
 	$(GOTEST) -coverprofile=coverage.out ./...
-	@go tool cover -func=coverage.out | tee /dev/stderr | \
+	@$(GO) tool cover -func=coverage.out | tee /dev/stderr | \
 		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
 		{ print "Coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
 
@@ -52,8 +52,8 @@ fmt-check:  ## Fail if any file would be reformatted
 	fi
 
 tidy:  ## Tidy and verify go.mod / go.sum
-	go mod tidy
-	go mod verify
+	$(GO) mod tidy
+	$(GO) mod verify
 
 ## ── Hooks ──────────────────────────────────────────────────────────────────
 
