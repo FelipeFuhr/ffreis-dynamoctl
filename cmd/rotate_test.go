@@ -28,6 +28,7 @@ func (s *rotateTestStore) ScanNamespace(context.Context, string) ([]store.Item, 
 	panic(rotateTestNotUsed)
 }
 func (s *rotateTestStore) ScanAll(context.Context) ([]store.Item, error) { panic(rotateTestNotUsed) }
+func (s *rotateTestStore) Restore(context.Context, store.Item) error     { panic(rotateTestNotUsed) }
 
 func (s *rotateTestStore) Get(_ context.Context, namespace, name string) (*store.Item, error) {
 	if namespace != s.item.Namespace || name != s.item.Name {

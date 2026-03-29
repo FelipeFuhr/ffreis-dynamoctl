@@ -76,6 +76,12 @@ func (f *fakeStore) UpdateEncrypted(_ context.Context, ns, name, val string, ver
 	return nil
 }
 
+func (f *fakeStore) Restore(_ context.Context, item store.Item) error {
+	cp := item
+	f.items[f.key(item.Namespace, item.Name)] = &cp
+	return nil
+}
+
 func (f *fakeStore) scanNS(ns string) ([]store.Item, error) {
 	var out []store.Item
 	for _, it := range f.items {
@@ -330,6 +336,48 @@ func TestRestorePropagatesS3Error(t *testing.T) {
 	_, err := Restore(context.Background(), newFakeStore(), s3c, RestoreOptions{Bucket: testBucket, Key: testKey})
 	if err == nil {
 		t.Error("expected error from S3 GetObject failure")
+	}
+}
+
+func TestRestore_PreservesMetadata(t *testing.T) {
+	src := newFakeStore()
+	createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	original := store.Item{
+		Namespace: testNamespace,
+		Name:      testKey,
+		Value:     "enc-val",
+		Encrypted: true,
+		Version:   5,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+	_ = src.Restore(context.Background(), original)
+
+	s3c := newFakeS3()
+	s3Key := dumpAndGetKey(t, src, s3c)
+
+	dst := newFakeStore()
+	result, err := Restore(context.Background(), dst, s3c, RestoreOptions{Bucket: testBucket, Key: s3Key})
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if result.Restored != 1 {
+		t.Errorf("restored: want 1, got %d", result.Restored)
+	}
+
+	got, err := dst.Get(context.Background(), testNamespace, testKey)
+	if err != nil {
+		t.Fatalf("Get after restore: %v", err)
+	}
+	if got.Version != original.Version {
+		t.Errorf("version: want %d, got %d", original.Version, got.Version)
+	}
+	if !got.CreatedAt.Equal(original.CreatedAt) {
+		t.Errorf("created_at: want %v, got %v", original.CreatedAt, got.CreatedAt)
+	}
+	if !got.UpdatedAt.Equal(original.UpdatedAt) {
+		t.Errorf("updated_at: want %v, got %v", original.UpdatedAt, got.UpdatedAt)
 	}
 }
 
