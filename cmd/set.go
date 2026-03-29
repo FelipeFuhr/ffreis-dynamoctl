@@ -54,7 +54,7 @@ The value may be supplied as a positional argument or piped via stdin
 				Value:     storeValue,
 				Encrypted: encrypted,
 			}
-			version, err := storeAndGetVersion(ctx, st, item)
+			version, err := storeAndGetVersion(ctx, st, &item)
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ func readStdinValue(r io.Reader) (string, error) {
 	return strings.TrimRight(string(data), "\n"), nil
 }
 
-func encryptValue(rawValue string, noEncrypt bool, encryptionKey string) (string, bool, error) {
+func encryptValue(rawValue string, noEncrypt bool, encryptionKey string) (value string, encrypted bool, err error) {
 	if noEncrypt {
 		return rawValue, false, nil
 	}
@@ -111,7 +111,7 @@ func encryptValue(rawValue string, noEncrypt bool, encryptionKey string) (string
 	return storeValue, true, nil
 }
 
-func storeAndGetVersion(ctx context.Context, st store.Store, item store.Item) (int, error) {
+func storeAndGetVersion(ctx context.Context, st store.Store, item *store.Item) (version int, err error) {
 	if err := st.Put(ctx, item); err != nil {
 		return 0, fmt.Errorf("storing item: %w", err)
 	}

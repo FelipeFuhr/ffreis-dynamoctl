@@ -53,15 +53,16 @@ Example:
 			result := rotateResult{}
 
 			for _, item := range items {
-				log := slog.With(logKeyNamespace, item.Namespace, logKeyName, item.Name)
+				itemCopy := item
+				log := slog.With(logKeyNamespace, itemCopy.Namespace, logKeyName, itemCopy.Name)
 
-				if !item.Encrypted {
+				if !itemCopy.Encrypted {
 					log.Debug("skipping plaintext item")
 					result.skipped++
 					continue
 				}
 
-				if err := rotateEncryptedItem(ctx, st, item, oldKey, newKey, log); err != nil {
+				if err := rotateEncryptedItem(ctx, st, &itemCopy, oldKey, newKey, log); err != nil {
 					result.failed++
 					continue
 				}
@@ -86,7 +87,7 @@ type rotateResult struct {
 	failed  int
 }
 
-func parseRotateKeys(currentKey, newKey string) (crypto.Key, crypto.Key, error) {
+func parseRotateKeys(currentKey, newKey string) (oldKey crypto.Key, parsedNewKey crypto.Key, err error) {
 	if currentKey == "" {
 		return crypto.Key{}, crypto.Key{}, fmt.Errorf("current encryption key required: set DYNAMOCTL_KEY or use --encryption-key")
 	}
@@ -97,11 +98,11 @@ func parseRotateKeys(currentKey, newKey string) (crypto.Key, crypto.Key, error) 
 		return crypto.Key{}, crypto.Key{}, fmt.Errorf("--new-key must differ from the current encryption key")
 	}
 
-	oldKey, err := crypto.ParseKey(currentKey)
+	oldKey, err = crypto.ParseKey(currentKey)
 	if err != nil {
 		return crypto.Key{}, crypto.Key{}, fmt.Errorf("invalid current encryption key: %w", err)
 	}
-	parsedNewKey, err := crypto.ParseKey(newKey)
+	parsedNewKey, err = crypto.ParseKey(newKey)
 	if err != nil {
 		return crypto.Key{}, crypto.Key{}, fmt.Errorf("invalid new encryption key: %w", err)
 	}
@@ -111,7 +112,7 @@ func parseRotateKeys(currentKey, newKey string) (crypto.Key, crypto.Key, error) 
 func rotateEncryptedItem(
 	ctx context.Context,
 	st store.Store,
-	item store.Item,
+	item *store.Item,
 	oldKey, newKey crypto.Key,
 	log *slog.Logger,
 ) error {
@@ -138,7 +139,7 @@ func rotateEncryptedItem(
 func updateEncryptedWithRetry(
 	ctx context.Context,
 	st store.Store,
-	item store.Item,
+	item *store.Item,
 	oldKey, newKey crypto.Key,
 	newCiphertext string,
 	log *slog.Logger,
@@ -157,7 +158,7 @@ func updateEncryptedWithRetry(
 		if err != nil {
 			return err
 		}
-		item = *latest
+		*item = *latest
 
 		plain, err := crypto.Decrypt(item.Value, oldKey)
 		if err != nil {

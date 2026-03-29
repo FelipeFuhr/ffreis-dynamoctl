@@ -38,7 +38,7 @@ func New(client DynamoDBClient, table string) *DynamoStore {
 
 // Put creates or updates an item.
 // Version starts at 1 and increments on every update.
-func (s *DynamoStore) Put(ctx context.Context, item Item) error {
+func (s *DynamoStore) Put(ctx context.Context, item *Item) error {
 	// Read current version so we can increment it.
 	existing, err := s.Get(ctx, item.Namespace, item.Name)
 	if err != nil && !errors.Is(err, ErrNotFound) {
@@ -100,7 +100,7 @@ func (s *DynamoStore) Get(ctx context.Context, namespace, name string) (*Item, e
 		return nil, fmt.Errorf("unmarshalling item: %w", err)
 	}
 
-	it := recordToItem(rec)
+	it := recordToItem(&rec)
 	return &it, nil
 }
 
@@ -135,7 +135,7 @@ func (s *DynamoStore) ScanAll(ctx context.Context) ([]Item, error) {
 			if err := attributevalue.UnmarshalMap(raw, &rec); err != nil {
 				return nil, fmt.Errorf("unmarshalling scan result: %w", err)
 			}
-			items = append(items, recordToItem(rec))
+			items = append(items, recordToItem(&rec))
 		}
 
 		if out.LastEvaluatedKey == nil {
@@ -145,6 +145,28 @@ func (s *DynamoStore) ScanAll(ctx context.Context) ([]Item, error) {
 	}
 
 	return items, nil
+}
+
+// Restore writes an item with its original metadata (version, timestamps)
+// preserved. Unlike Put, it does not auto-assign version or timestamps.
+// Intended for use during backup restoration.
+func (s *DynamoStore) Restore(ctx context.Context, item *Item) error {
+	rec := itemToRecord(item)
+	av, err := attributevalue.MarshalMap(rec)
+	if err != nil {
+		return fmt.Errorf("marshalling item: %w", err)
+	}
+
+	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: sdkaws.String(s.table),
+		Item:      av,
+	})
+	if err != nil {
+		return fmt.Errorf("restoring item %q/%q: %w", item.Namespace, item.Name, err)
+	}
+
+	slog.Debug("item restored", "namespace", item.Namespace, "name", item.Name, "version", item.Version)
+	return nil
 }
 
 // Delete removes an item. No-op if it does not exist.
@@ -228,28 +250,6 @@ func (s *DynamoStore) UpdateEncrypted(ctx context.Context, namespace, name, newV
 	return nil
 }
 
-// Restore writes an item with its original metadata (version, timestamps)
-// preserved. Unlike Put, it does not auto-assign version or timestamps.
-// Intended for use during backup restoration.
-func (s *DynamoStore) Restore(ctx context.Context, item Item) error {
-	rec := itemToRecord(item)
-	av, err := attributevalue.MarshalMap(rec)
-	if err != nil {
-		return fmt.Errorf("marshalling item: %w", err)
-	}
-
-	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: sdkaws.String(s.table),
-		Item:      av,
-	})
-	if err != nil {
-		return fmt.Errorf("restoring item %q/%q: %w", item.Namespace, item.Name, err)
-	}
-
-	slog.Debug("item restored", "namespace", item.Namespace, "name", item.Name, "version", item.Version)
-	return nil
-}
-
 // queryNamespace queries all items for a given namespace using the PK index.
 func (s *DynamoStore) queryNamespace(ctx context.Context, namespace string) ([]Item, error) {
 	pk, err := attributevalue.Marshal(pkPrefix + namespace)
@@ -278,7 +278,7 @@ func (s *DynamoStore) queryNamespace(ctx context.Context, namespace string) ([]I
 			if err := attributevalue.UnmarshalMap(raw, &rec); err != nil {
 				return nil, fmt.Errorf("unmarshalling query result: %w", err)
 			}
-			items = append(items, recordToItem(rec))
+			items = append(items, recordToItem(&rec))
 		}
 
 		if out.LastEvaluatedKey == nil {

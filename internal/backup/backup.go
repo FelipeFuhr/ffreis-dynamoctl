@@ -198,7 +198,7 @@ func Restore(ctx context.Context, st store.Store, s3c S3Client, opts RestoreOpti
 			CreatedAt: rec.CreatedAt,
 			UpdatedAt: rec.UpdatedAt,
 		}
-		if err := st.Restore(ctx, it); err != nil {
+		if err := st.Restore(ctx, &it); err != nil {
 			msg := fmt.Sprintf("restoring %s/%s: %v", rec.Namespace, rec.Name, err)
 			result.Errors = append(result.Errors, msg)
 			slog.Warn("failed to restore item", "error", msg)

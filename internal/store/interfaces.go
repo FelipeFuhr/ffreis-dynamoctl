@@ -10,7 +10,7 @@ import (
 type Store interface {
 	// Put creates or updates an item. The Version field is managed automatically:
 	// 1 for new items, existing_version+1 for updates.
-	Put(ctx context.Context, item Item) error
+	Put(ctx context.Context, item *Item) error
 
 	// Get returns the item with the given namespace and name.
 	// Returns ErrNotFound when the item does not exist.
@@ -36,7 +36,7 @@ type Store interface {
 	// Restore writes an item preserving its original metadata (Version, CreatedAt,
 	// UpdatedAt). Unlike Put, it does not auto-assign version or timestamps.
 	// Intended for use during backup restoration.
-	Restore(ctx context.Context, item Item) error
+	Restore(ctx context.Context, item *Item) error
 }
 
 // DynamoDBClient is the subset of *dynamodb.Client used by DynamoStore.

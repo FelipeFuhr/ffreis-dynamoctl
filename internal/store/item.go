@@ -20,9 +20,6 @@ type Item struct {
 	UpdatedAt time.Time
 }
 
-// pk returns the DynamoDB partition key for this item.
-func (i Item) pk() string { return pkPrefix + i.Namespace }
-
 // record is the DynamoDB wire representation of an Item.
 // The PK prefix keeps all items for a namespace co-located on the same
 // partition so a Query (not Scan) can retrieve them efficiently.
@@ -36,7 +33,7 @@ type record struct {
 	UpdatedAt time.Time `dynamodbav:"updated_at"`
 }
 
-func itemToRecord(it Item) record {
+func itemToRecord(it *Item) record {
 	return record{
 		PK:        pkPrefix + it.Namespace,
 		SK:        it.Name,
@@ -48,7 +45,7 @@ func itemToRecord(it Item) record {
 	}
 }
 
-func recordToItem(r record) Item {
+func recordToItem(r *record) Item {
 	return Item{
 		Namespace: r.PK[len(pkPrefix):], // strip "NS#" prefix
 		Name:      r.SK,

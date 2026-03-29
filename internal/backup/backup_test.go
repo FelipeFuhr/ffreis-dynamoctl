@@ -30,8 +30,11 @@ func newFakeStore() *fakeStore {
 
 func (f *fakeStore) key(ns, name string) string { return ns + "\x00" + name }
 
-func (f *fakeStore) Put(_ context.Context, item store.Item) error {
-	cp := item
+func (f *fakeStore) Put(_ context.Context, item *store.Item) error {
+	if item == nil {
+		return errors.New("nil item")
+	}
+	cp := *item
 	f.items[f.key(item.Namespace, item.Name)] = &cp
 	return nil
 }
@@ -76,8 +79,11 @@ func (f *fakeStore) UpdateEncrypted(_ context.Context, ns, name, val string, ver
 	return nil
 }
 
-func (f *fakeStore) Restore(_ context.Context, item store.Item) error {
-	cp := item
+func (f *fakeStore) Restore(_ context.Context, item *store.Item) error {
+	if item == nil {
+		return errors.New("nil item")
+	}
+	cp := *item
 	f.items[f.key(item.Namespace, item.Name)] = &cp
 	return nil
 }
@@ -140,9 +146,9 @@ func TestDumpUploadsSingleNamespace(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now().UTC()
-	_ = st.Put(ctx, store.Item{Namespace: "prod", Name: "api-key", Value: "enc-val", Encrypted: true, CreatedAt: now, UpdatedAt: now})
-	_ = st.Put(ctx, store.Item{Namespace: "prod", Name: "db-pass", Value: "enc-pass", Encrypted: true, CreatedAt: now, UpdatedAt: now})
-	_ = st.Put(ctx, store.Item{Namespace: "staging", Name: "other", Value: "x", CreatedAt: now, UpdatedAt: now})
+	_ = st.Put(ctx, &store.Item{Namespace: "prod", Name: "api-key", Value: "enc-val", Encrypted: true, CreatedAt: now, UpdatedAt: now})
+	_ = st.Put(ctx, &store.Item{Namespace: "prod", Name: "db-pass", Value: "enc-pass", Encrypted: true, CreatedAt: now, UpdatedAt: now})
+	_ = st.Put(ctx, &store.Item{Namespace: "staging", Name: "other", Value: "x", CreatedAt: now, UpdatedAt: now})
 
 	uri, count, err := Dump(ctx, st, s3c, DumpOptions{
 		Table:     "dynamoctl",
@@ -165,8 +171,8 @@ func TestDumpAllNamespaces(t *testing.T) {
 	s3c := newFakeS3()
 	ctx := context.Background()
 
-	_ = st.Put(ctx, store.Item{Namespace: "ns1", Name: "a"})
-	_ = st.Put(ctx, store.Item{Namespace: "ns2", Name: "b"})
+	_ = st.Put(ctx, &store.Item{Namespace: "ns1", Name: "a"})
+	_ = st.Put(ctx, &store.Item{Namespace: "ns2", Name: "b"})
 
 	_, count, err := Dump(ctx, st, s3c, DumpOptions{Table: testTable, Bucket: testBucket})
 	if err != nil {
@@ -182,7 +188,7 @@ func TestDumpManifestIsValidJSON(t *testing.T) {
 	s3c := newFakeS3()
 	ctx := context.Background()
 
-	_ = st.Put(ctx, store.Item{Namespace: testNamespace, Name: testKey, Value: "v"})
+	_ = st.Put(ctx, &store.Item{Namespace: testNamespace, Name: testKey, Value: "v"})
 
 	uri, _, err := Dump(ctx, st, s3c, DumpOptions{Table: testTable, Namespace: testNamespace, Bucket: testBucket})
 	if err != nil {
@@ -220,7 +226,7 @@ func TestDumpPropagatesScanError(t *testing.T) {
 
 func TestDumpPropagatesS3Error(t *testing.T) {
 	st := newFakeStore()
-	_ = st.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey})
+	_ = st.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: testKey})
 	s3c := newFakeS3()
 	s3c.putErr = errors.New("s3 write error")
 
@@ -246,8 +252,8 @@ func dumpAndGetKey(t *testing.T, st store.Store, s3c *fakeS3) string {
 
 func TestRestoreRestoresItems(t *testing.T) {
 	src := newFakeStore()
-	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: "a", Value: "enc-a", Encrypted: true})
-	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: "b", Value: "enc-b", Encrypted: true})
+	_ = src.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: "a", Value: "enc-a", Encrypted: true})
+	_ = src.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: "b", Value: "enc-b", Encrypted: true})
 
 	s3c := newFakeS3()
 	s3Key := dumpAndGetKey(t, src, s3c)
@@ -267,14 +273,14 @@ func TestRestoreRestoresItems(t *testing.T) {
 
 func TestRestoreSkipsExistingWithoutOverwrite(t *testing.T) {
 	src := newFakeStore()
-	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "original"})
+	_ = src.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: testKey, Value: "original"})
 
 	s3c := newFakeS3()
 	s3Key := dumpAndGetKey(t, src, s3c)
 
 	// Pre-populate the destination with the same item.
 	dst := newFakeStore()
-	_ = dst.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "existing"})
+	_ = dst.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: testKey, Value: "existing"})
 
 	result, err := Restore(context.Background(), dst, s3c, RestoreOptions{
 		Bucket:    testBucket,
@@ -297,13 +303,13 @@ func TestRestoreSkipsExistingWithoutOverwrite(t *testing.T) {
 
 func TestRestoreOverwritesWhenEnabled(t *testing.T) {
 	src := newFakeStore()
-	_ = src.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "backup-val"})
+	_ = src.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: testKey, Value: "backup-val"})
 
 	s3c := newFakeS3()
 	s3Key := dumpAndGetKey(t, src, s3c)
 
 	dst := newFakeStore()
-	_ = dst.Put(context.Background(), store.Item{Namespace: testNamespace, Name: testKey, Value: "old"})
+	_ = dst.Put(context.Background(), &store.Item{Namespace: testNamespace, Name: testKey, Value: "old"})
 
 	result, err := Restore(context.Background(), dst, s3c, RestoreOptions{
 		Bucket:    testBucket,
@@ -352,7 +358,7 @@ func TestRestore_PreservesMetadata(t *testing.T) {
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
-	_ = src.Restore(context.Background(), original)
+	_ = src.Restore(context.Background(), &original)
 
 	s3c := newFakeS3()
 	s3Key := dumpAndGetKey(t, src, s3c)

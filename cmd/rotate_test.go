@@ -19,7 +19,7 @@ type rotateTestStore struct {
 
 const rotateTestNotUsed = "not used"
 
-func (s *rotateTestStore) Put(context.Context, store.Item) error { panic(rotateTestNotUsed) }
+func (s *rotateTestStore) Put(context.Context, *store.Item) error { panic(rotateTestNotUsed) }
 func (s *rotateTestStore) List(context.Context, string) ([]store.Item, error) {
 	panic(rotateTestNotUsed)
 }
@@ -28,14 +28,14 @@ func (s *rotateTestStore) ScanNamespace(context.Context, string) ([]store.Item, 
 	panic(rotateTestNotUsed)
 }
 func (s *rotateTestStore) ScanAll(context.Context) ([]store.Item, error) { panic(rotateTestNotUsed) }
-func (s *rotateTestStore) Restore(context.Context, store.Item) error     { panic(rotateTestNotUsed) }
+func (s *rotateTestStore) Restore(context.Context, *store.Item) error    { panic(rotateTestNotUsed) }
 
 func (s *rotateTestStore) Get(_ context.Context, namespace, name string) (*store.Item, error) {
 	if namespace != s.item.Namespace || name != s.item.Name {
 		return nil, errors.New("not found")
 	}
-	copy := s.item
-	return &copy, nil
+	itemCopy := s.item
+	return &itemCopy, nil
 }
 
 func (s *rotateTestStore) UpdateEncrypted(_ context.Context, namespace, name, newValue string, expectedVersion int) error {
@@ -103,7 +103,7 @@ func TestUpdateEncryptedWithRetryConflictsOnceThenSucceeds(t *testing.T) {
 		t.Fatalf("Encrypt new: %v", err)
 	}
 
-	err = updateEncryptedWithRetry(context.Background(), st, item, oldKey, newKey, newCiphertext, log)
+	err = updateEncryptedWithRetry(context.Background(), st, &item, oldKey, newKey, newCiphertext, log)
 	if err != nil {
 		t.Fatalf("updateEncryptedWithRetry: %v", err)
 	}
@@ -128,7 +128,8 @@ func TestRotateEncryptedItemWrongKeyFails(t *testing.T) {
 	}
 
 	log := slog.New(slog.NewTextHandler(ioDiscard{}, nil))
-	err = rotateEncryptedItem(context.Background(), st, st.item, wrongKey, newKey, log)
+	item := st.item
+	err = rotateEncryptedItem(context.Background(), st, &item, wrongKey, newKey, log)
 	if err == nil {
 		t.Fatal("expected decrypt error, got nil")
 	}

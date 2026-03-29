@@ -7,7 +7,6 @@ import (
 	"time"
 
 	sdkaws "github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	dbtypes "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -115,15 +114,6 @@ func newTestStore(db *memDB) *DynamoStore {
 	return New(db, testTableName)
 }
 
-func mustMarshalRecord(t *testing.T, rec record) map[string]dbtypes.AttributeValue {
-	t.Helper()
-	av, err := attributevalue.MarshalMap(rec)
-	if err != nil {
-		t.Fatalf("MarshalMap: %v", err)
-	}
-	return av
-}
-
 // ---------------------------------------------------------------------------
 // Tests: Put
 // ---------------------------------------------------------------------------
@@ -132,7 +122,7 @@ func TestPutNewItemVersionOne(t *testing.T) {
 	db := newMemDB()
 	s := newTestStore(db)
 
-	err := s.Put(context.Background(), Item{
+	err := s.Put(context.Background(), &Item{
 		Namespace: testNamespaceDefault,
 		Name:      "foo",
 		Value:     "bar",
@@ -156,8 +146,8 @@ func TestPutExistingItemIncrementsVersion(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "key", Value: "v1"})
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "key", Value: "v2"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "key", Value: "v1"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "key", Value: "v2"})
 
 	got, err := s.Get(ctx, testNamespaceDefault, "key")
 	if err != nil {
@@ -176,12 +166,12 @@ func TestPutPreservesCreatedAt(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "k", Value: "v1"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "k", Value: "v1"})
 	first, _ := s.Get(ctx, testNamespaceDefault, "k")
 	created := first.CreatedAt
 
 	time.Sleep(time.Millisecond)
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "k", Value: "v2"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "k", Value: "v2"})
 	second, _ := s.Get(ctx, testNamespaceDefault, "k")
 
 	if !second.CreatedAt.Equal(created) {
@@ -208,8 +198,8 @@ func TestGetCorrectNamespaceIsolation(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: "ns1", Name: "key", Value: "ns1-val"})
-	_ = s.Put(ctx, Item{Namespace: "ns2", Name: "key", Value: "ns2-val"})
+	_ = s.Put(ctx, &Item{Namespace: "ns1", Name: "key", Value: "ns1-val"})
+	_ = s.Put(ctx, &Item{Namespace: "ns2", Name: "key", Value: "ns2-val"})
 
 	got1, _ := s.Get(ctx, "ns1", "key")
 	got2, _ := s.Get(ctx, "ns2", "key")
@@ -228,9 +218,9 @@ func TestListReturnsAllItemsInNamespace(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceProd, Name: "a", Value: "1"})
-	_ = s.Put(ctx, Item{Namespace: testNamespaceProd, Name: "b", Value: "2"})
-	_ = s.Put(ctx, Item{Namespace: "staging", Name: "c", Value: "3"}) // different namespace
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceProd, Name: "a", Value: "1"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceProd, Name: "b", Value: "2"})
+	_ = s.Put(ctx, &Item{Namespace: "staging", Name: "c", Value: "3"}) // different namespace
 
 	items, err := s.List(ctx, testNamespaceProd)
 	if err != nil {
@@ -263,7 +253,7 @@ func TestDeleteRemovesItem(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "todelete", Value: "x"})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "todelete", Value: "x"})
 	if err := s.Delete(ctx, testNamespaceDefault, "todelete"); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -294,9 +284,9 @@ func TestScanAllReturnsAllNamespaces(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: "ns1", Name: "a", Value: "1"})
-	_ = s.Put(ctx, Item{Namespace: "ns2", Name: "b", Value: "2"})
-	_ = s.Put(ctx, Item{Namespace: "ns3", Name: "c", Value: "3"})
+	_ = s.Put(ctx, &Item{Namespace: "ns1", Name: "a", Value: "1"})
+	_ = s.Put(ctx, &Item{Namespace: "ns2", Name: "b", Value: "2"})
+	_ = s.Put(ctx, &Item{Namespace: "ns3", Name: "c", Value: "3"})
 
 	items, err := s.ScanAll(ctx)
 	if err != nil {
@@ -316,7 +306,7 @@ func TestUpdateEncryptedSuccessOnMatchingVersion(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "k", Value: "old", Encrypted: true})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "k", Value: "old", Encrypted: true})
 	item, _ := s.Get(ctx, testNamespaceDefault, "k")
 
 	err := s.UpdateEncrypted(ctx, testNamespaceDefault, "k", "new-ciphertext", item.Version)
@@ -338,7 +328,7 @@ func TestUpdateEncryptedFailsOnVersionMismatch(t *testing.T) {
 	s := newTestStore(db)
 	ctx := context.Background()
 
-	_ = s.Put(ctx, Item{Namespace: testNamespaceDefault, Name: "k", Value: "old", Encrypted: true})
+	_ = s.Put(ctx, &Item{Namespace: testNamespaceDefault, Name: "k", Value: "old", Encrypted: true})
 
 	// Use a stale version (0 instead of 1).
 	err := s.UpdateEncrypted(ctx, testNamespaceDefault, "k", "new", 0)
@@ -363,7 +353,7 @@ func TestRecordToItemRoundtrip(t *testing.T) {
 		UpdatedAt: now,
 	}
 
-	rec := itemToRecord(original)
+	rec := itemToRecord(&original)
 	if rec.PK != "NS#myns" {
 		t.Errorf("PK: want NS#myns, got %s", rec.PK)
 	}
@@ -371,7 +361,7 @@ func TestRecordToItemRoundtrip(t *testing.T) {
 		t.Errorf("SK: want mykey, got %s", rec.SK)
 	}
 
-	back := recordToItem(rec)
+	back := recordToItem(&rec)
 	if back.Namespace != original.Namespace {
 		t.Errorf("Namespace: want %q, got %q", original.Namespace, back.Namespace)
 	}
@@ -392,7 +382,7 @@ func TestPutPropagatesDynamoError(t *testing.T) {
 	db.putErr = errors.New("dynamo unavailable")
 	s := newTestStore(db)
 
-	err := s.Put(context.Background(), Item{Namespace: testNamespaceDefault, Name: "k", Value: "v"})
+	err := s.Put(context.Background(), &Item{Namespace: testNamespaceDefault, Name: "k", Value: "v"})
 	if err == nil {
 		t.Error("expected error propagated from DynamoDB, got nil")
 	}
