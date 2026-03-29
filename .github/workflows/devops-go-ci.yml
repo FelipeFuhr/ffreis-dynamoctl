@@ -27,26 +27,25 @@ jobs:
   mod-tidy:
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@main
     with:
-      go-version: "1.24"
+      go-version: "1.25.8"
       working-directory: "."
 
   fmt:
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@main
     with:
-      go-version: "1.24"
+      go-version: "1.25.8"
       working-directory: "."
 
   lint:
     needs: [fmt]
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@main
     with:
-      go-version: "1.24"
+      go-version: "1.25.8"
       working-directory: "."
 
   test:
     needs: [fmt]
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@main
     with:
-      go-version: "1.24"
+      go-version: "1.25.8"
       working-directory: "."
-
