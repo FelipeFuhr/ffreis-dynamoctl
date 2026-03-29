@@ -27,7 +27,7 @@ DYNAMOCTL_KEY before printing.  Pass --raw to print the ciphertext as-is.`,
 			ctx := cmd.Context()
 			name := args[0]
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}

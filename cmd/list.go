@@ -20,7 +20,7 @@ Use --namespace / -n to target a different namespace.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}

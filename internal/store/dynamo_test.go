@@ -244,6 +244,29 @@ func TestListEmptyNamespace(t *testing.T) {
 	}
 }
 
+func TestScanNamespaceUsesPKQuery(t *testing.T) {
+	db := newMemDB()
+	s := newTestStore(db)
+	ctx := context.Background()
+
+	_ = s.Put(ctx, &Item{Namespace: "prod", Name: "a", Value: "1"})
+	_ = s.Put(ctx, &Item{Namespace: "prod", Name: "b", Value: "2"})
+	_ = s.Put(ctx, &Item{Namespace: "staging", Name: "c", Value: "3"})
+
+	items, err := s.ScanNamespace(ctx, "prod")
+	if err != nil {
+		t.Fatalf("ScanNamespace: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("want 2 items in prod, got %d", len(items))
+	}
+	for _, it := range items {
+		if it.Namespace != "prod" {
+			t.Fatalf("unexpected namespace: %s", it.Namespace)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests: Delete
 // ---------------------------------------------------------------------------
@@ -334,6 +357,46 @@ func TestUpdateEncryptedFailsOnVersionMismatch(t *testing.T) {
 	err := s.UpdateEncrypted(ctx, testNamespaceDefault, "k", "new", 0)
 	if !errors.Is(err, ErrConflict) {
 		t.Errorf("want ErrConflict on version mismatch, got %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Restore
+// ---------------------------------------------------------------------------
+
+func TestRestorePreservesMetadata(t *testing.T) {
+	db := newMemDB()
+	s := newTestStore(db)
+	ctx := context.Background()
+
+	createdAt := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	original := &Item{
+		Namespace: "prod",
+		Name:      "api-key",
+		Value:     "ciphertext",
+		Encrypted: true,
+		Version:   7,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}
+
+	if err := s.Restore(ctx, original); err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+
+	got, err := s.Get(ctx, original.Namespace, original.Name)
+	if err != nil {
+		t.Fatalf("Get after Restore: %v", err)
+	}
+	if got.Version != original.Version {
+		t.Fatalf("version: want %d, got %d", original.Version, got.Version)
+	}
+	if !got.CreatedAt.Equal(original.CreatedAt) {
+		t.Fatalf("CreatedAt: want %v, got %v", original.CreatedAt, got.CreatedAt)
+	}
+	if !got.UpdatedAt.Equal(original.UpdatedAt) {
+		t.Fatalf("UpdatedAt: want %v, got %v", original.UpdatedAt, got.UpdatedAt)
 	}
 }
 

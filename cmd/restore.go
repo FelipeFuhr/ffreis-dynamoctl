@@ -37,11 +37,11 @@ Examples:
 
 			ctx := cmd.Context()
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}
-			s3c, err := newAWSS3Client(ctx)
+			s3c, err := s3ClientFactory(ctx)
 			if err != nil {
 				return err
 			}

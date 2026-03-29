@@ -7,9 +7,11 @@ import (
 	"github.com/ffreis/dynamoctl/cmd"
 )
 
+var exit = os.Exit
+
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exit(1)
 	}
 }

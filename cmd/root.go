@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	platformaws "github.com/ffreis/dynamoctl/internal/aws"
+	"github.com/ffreis/dynamoctl/internal/backup"
 	appcfg "github.com/ffreis/dynamoctl/internal/config"
 	"github.com/ffreis/dynamoctl/internal/store"
 )
@@ -65,6 +66,14 @@ Quick start:
 func Execute() error {
 	return rootCmd.Execute()
 }
+
+// Factories used by commands; overridden in tests.
+var (
+	storeFactory    = func(ctx context.Context) (store.Store, error) { return newAWSStore(ctx) }
+	s3ClientFactory = func(ctx context.Context) (backup.S3Client, error) { return newAWSS3Client(ctx) }
+)
+
+var loadDefaultConfig = config.LoadDefaultConfig
 
 func init() {
 	rootCmd.PersistentPreRunE = setupLogger
@@ -144,7 +153,7 @@ func newAWSConfig(ctx context.Context) (awsconfig.Config, error) {
 	if flagProfile != "" {
 		opts = append(opts, config.WithSharedConfigProfile(flagProfile))
 	}
-	cfg, err := config.LoadDefaultConfig(ctx, opts...)
+	cfg, err := loadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return awsconfig.Config{}, fmt.Errorf("loading AWS config: %w", err)
 	}

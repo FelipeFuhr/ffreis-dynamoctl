@@ -40,7 +40,7 @@ Example:
 				return err
 			}
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}

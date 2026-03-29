@@ -38,7 +38,7 @@ The value may be supplied as a positional argument or piped via stdin
 				return err
 			}
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}

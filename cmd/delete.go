@@ -22,7 +22,7 @@ func newDeleteCmd() *cobra.Command {
 			ctx := cmd.Context()
 			name := args[0]
 
-			st, err := newAWSStore(ctx)
+			st, err := storeFactory(ctx)
 			if err != nil {
 				return err
 			}
