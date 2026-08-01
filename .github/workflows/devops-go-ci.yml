@@ -28,7 +28,7 @@ jobs:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@cfd442e1b94d8849321f969978ef9a79bf01fa6a # v1.1.2
     with:
-      go-version: "1.25.11"
+      go-version: "1.25"
       working-directory: "."
 
   fmt:
@@ -36,7 +36,7 @@ jobs:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@cfd442e1b94d8849321f969978ef9a79bf01fa6a # v1.1.2
     with:
-      go-version: "1.25.11"
+      go-version: "1.25"
       working-directory: "."
 
   lint:
@@ -46,7 +46,7 @@ jobs:
       pull-requests: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@cfd442e1b94d8849321f969978ef9a79bf01fa6a # v1.1.2
     with:
-      go-version: "1.25.11"
+      go-version: "1.25"
       working-directory: "."
 
   test:
@@ -55,5 +55,5 @@ jobs:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@cfd442e1b94d8849321f969978ef9a79bf01fa6a # v1.1.2
     with:
-      go-version: "1.25.11"
+      go-version: "1.25"
       working-directory: "."

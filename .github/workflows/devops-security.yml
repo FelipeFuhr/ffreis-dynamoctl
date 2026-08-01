@@ -71,7 +71,7 @@ jobs:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@cfd442e1b94d8849321f969978ef9a79bf01fa6a
     with:
-      go-version: "1.25.8"
+      go-version: "1.25"
       working-directory: "."
 
       runner: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && '["ubuntu-latest"]' || '["ubuntu-latest"]' }}
