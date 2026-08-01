@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -9,6 +10,22 @@ import (
 
 	"github.com/ffreis/dynamoctl/internal/output"
 )
+
+// describeTableAPI is the subset of *dynamodb.Client the describe command
+// calls. Declared here, mirroring internal/store.DynamoDBClient, so tests can
+// inject a fake that returns canned metadata instead of hitting AWS — the
+// concrete SDK client ddbClientFactory returns can't be faked directly.
+type describeTableAPI interface {
+	DescribeTable(ctx context.Context, params *awsdynamodb.DescribeTableInput, optFns ...func(*awsdynamodb.Options)) (*awsdynamodb.DescribeTableOutput, error)
+}
+
+// describeClientFactory wraps ddbClientFactory so newDescribeCmd depends on
+// describeTableAPI rather than the concrete client. Overridden directly in
+// tests instead of ddbClientFactory, keeping every other command's factory
+// override untouched.
+var describeClientFactory = func(ctx context.Context) (describeTableAPI, error) {
+	return ddbClientFactory(ctx)
+}
 
 func newDescribeCmd() *cobra.Command {
 	return &cobra.Command{
@@ -23,7 +40,7 @@ The --table flag selects the target table (default: DYNAMOCTL_TABLE env or "dyna
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 
-			client, err := ddbClientFactory(ctx)
+			client, err := describeClientFactory(ctx)
 			if err != nil {
 				return err
 			}
