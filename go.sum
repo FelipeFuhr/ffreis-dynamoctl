@@ -1,5 +1,5 @@
-github.com/FelipeFuhr/ffreis-platform-cli v0.2.0 h1:QbyCCDjyLZza43CrqSbHOwUtzNoSfs6XU8LkA9q755s=
-github.com/FelipeFuhr/ffreis-platform-cli v0.2.0/go.mod h1:6Vn9R5SjOWLlVxSWaZwivUL4Ps4rCihzyeZUA9WaTYY=
+github.com/FelipeFuhr/ffreis-platform-cli v0.3.2 h1:MsjbsL0wcDq/iyEvW+Xmwyfuy67v6Q5rarsTFvwfZFs=
+github.com/FelipeFuhr/ffreis-platform-cli v0.3.2/go.mod h1:L7SnkSVE6hhMPMelV1BYjxt70t2MOFqb/ht52fuI8x0=
 github.com/aws/aws-sdk-go-v2 v1.42.0 h1:XvXMJTkFQtpBKIWZnmr9ZEOc2InWM2yldjXEJ/bymhA=
 github.com/aws/aws-sdk-go-v2 v1.42.0/go.mod h1:27+ACypSLljLAEKsCYOmrjKh83vuTRkuAe9Uv/3A4bg=
 github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.13 h1:p1BBrg/Hhp6uK7zpejeI8QFXHJeC/mynzi04Sl03k9g=
