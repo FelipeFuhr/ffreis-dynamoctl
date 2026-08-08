@@ -39,6 +39,8 @@ coverage-gate:  ## Fail if total coverage is below $(COVERAGE_THRESHOLD)%
 		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
 		{ print "Coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
 
+# scan-fix(awk:strnum): same fix as coverage-gate — gsub() clears gawk's STRNUM
+# flag, forcing a lexical string compare instead of numeric; coerce via `+ 0`.
 integration-coverage-gate:  ## Run //go:build integration tests; fail if below $(COVERAGE_THRESHOLD)% (no-op if none exist)
 	@if ! grep -rl '^//go:build integration' --include='*.go' . >/dev/null 2>&1; then \
 		echo "No '//go:build integration' files found — skipping integration-coverage-gate."; \
@@ -46,12 +48,16 @@ integration-coverage-gate:  ## Run //go:build integration tests; fail if below $
 	fi; \
 	$(GOTEST) -tags=integration -coverprofile=coverage-integration.out ./...; \
 	$(GO) tool cover -func=coverage-integration.out | tee /dev/stderr | \
-		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
-		{ print "Integration coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+		awk '/^total:/ { gsub(/%/, "", $$3); cov = $$3 + 0; if (cov < $(COVERAGE_THRESHOLD)) \
+		{ print "Integration coverage " cov "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
 
 mutation:  ## Run mutation testing with gremlins (slow — CI only)
 	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
-	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) ./internal/...
+	# scan-fix(gremlins:wildcard): gremlins' CLI doesn't understand Go's `/...`
+	# recursive wildcard (it takes exactly one bare [path] positional arg) — with
+	# it, gremlins matches 0 packages and prints "No results to report" with
+	# exit 0, a silent vacuous pass. A bare directory already recurses correctly.
+	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) ./internal
 
 quality-gates: test coverage-gate  ## Strict pre-promotion gate (test + coverage)
 
