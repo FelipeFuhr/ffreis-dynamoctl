@@ -9,9 +9,11 @@ LDFLAGS     := -ldflags "-X '$(MODULE)/cmd.version=$(VERSION)' \
                           -X '$(MODULE)/cmd.commit=$(COMMIT)' \
                           -X '$(MODULE)/cmd.buildTime=$(BUILD_TIME)'"
 COVERAGE_THRESHOLD := 80
+MUTATION_THRESHOLD := 60
 GOTEST      := $(GO) test -timeout 60s -race -shuffle=on
 
 .PHONY: all build test lint fmt fmt-check tidy coverage coverage-gate \
+        integration-coverage-gate mutation quality-gates \
         lefthook-install clean smoke help
 
 all: fmt-check lint test build  ## Run all quality gates and build
@@ -36,6 +38,22 @@ coverage-gate:  ## Fail if total coverage is below $(COVERAGE_THRESHOLD)%
 	@$(GO) tool cover -func=coverage.out | tee /dev/stderr | \
 		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
 		{ print "Coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+
+integration-coverage-gate:  ## Run //go:build integration tests; fail if below $(COVERAGE_THRESHOLD)% (no-op if none exist)
+	@if ! grep -rl '^//go:build integration' --include='*.go' . >/dev/null 2>&1; then \
+		echo "No '//go:build integration' files found — skipping integration-coverage-gate."; \
+		exit 0; \
+	fi; \
+	$(GOTEST) -tags=integration -coverprofile=coverage-integration.out ./...; \
+	$(GO) tool cover -func=coverage-integration.out | tee /dev/stderr | \
+		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
+		{ print "Integration coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+
+mutation:  ## Run mutation testing with gremlins (slow — CI only)
+	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) ./internal/...
+
+quality-gates: test coverage-gate  ## Strict pre-promotion gate (test + coverage)
 
 ## ── Code quality ───────────────────────────────────────────────────────────
 
