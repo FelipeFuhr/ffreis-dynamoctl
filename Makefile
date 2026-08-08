@@ -33,9 +33,12 @@ coverage:  ## Generate HTML coverage report
 
 coverage-gate:  ## Fail if total coverage is below $(COVERAGE_THRESHOLD)%
 	$(GOTEST) -coverprofile=coverage.out ./...
+	# scan-fix(awk:strnum): gsub() on $$3 clears gawk's STRNUM flag, so the old
+	# `$$3 < threshold` compared LEXICALLY (e.g. "81.5" vs "100" as strings),
+	# not numerically — the gate could never actually fail. Coerce via `+ 0`.
 	@$(GO) tool cover -func=coverage.out | tee /dev/stderr | \
-		awk '/^total:/ { gsub(/%/, "", $$3); if ($$3 < $(COVERAGE_THRESHOLD)) \
-		{ print "Coverage " $$3 "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+		awk '/^total:/ { gsub(/%/, "", $$3); cov = $$3 + 0; if (cov < $(COVERAGE_THRESHOLD)) \
+		{ print "Coverage " cov "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
 
 ## ── Code quality ───────────────────────────────────────────────────────────
 
