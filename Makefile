@@ -10,10 +10,12 @@ LDFLAGS     := -ldflags "-X '$(MODULE)/cmd.version=$(VERSION)' \
                           -X '$(MODULE)/cmd.buildTime=$(BUILD_TIME)'"
 COVERAGE_THRESHOLD := 80
 MUTATION_THRESHOLD := 60
+FUZZ_PACKAGES ?= ./...
+FUZZ_TIME ?= 30s
 GOTEST      := $(GO) test -timeout 60s -race -shuffle=on
 
-.PHONY: all build test lint fmt fmt-check tidy coverage coverage-gate \
-        integration-coverage-gate mutation quality-gates \
+.PHONY: all build build-all test lint fmt fmt-check tidy coverage coverage-gate \
+		integration-coverage-gate mutation fuzz quality-gates \
         lefthook-install clean smoke help
 
 all: fmt-check lint test build  ## Run all quality gates and build
@@ -22,6 +24,11 @@ all: fmt-check lint test build  ## Run all quality gates and build
 
 build:  ## Build the binary
 	$(GO) build -trimpath $(LDFLAGS) -o $(BINARY) $(CMD_PKG)
+
+build-all: build ## Alias required by the lefthook release tier
+
+fuzz: ## Run all Fuzz* targets for FUZZ_TIME each (no-op when none exist)
+	@for pkg in $$($(GO) list $(FUZZ_PACKAGES)); do targets=$$($(GO) test -list 'Fuzz.*' "$$pkg" 2>/dev/null | grep '^Fuzz' || true); for target in $$targets; do $(GO) test -run='^$$' -fuzz="^$${target}$$" -fuzztime="$(FUZZ_TIME)" "$$pkg"; done; done
 
 ## ── Testing ────────────────────────────────────────────────────────────────
 
