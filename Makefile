@@ -9,9 +9,13 @@ LDFLAGS     := -ldflags "-X '$(MODULE)/cmd.version=$(VERSION)' \
                           -X '$(MODULE)/cmd.commit=$(COMMIT)' \
                           -X '$(MODULE)/cmd.buildTime=$(BUILD_TIME)'"
 COVERAGE_THRESHOLD := 80
+MUTATION_THRESHOLD := 60
+FUZZ_PACKAGES ?= ./...
+FUZZ_TIME ?= 30s
 GOTEST      := $(GO) test -timeout 60s -race -shuffle=on
 
-.PHONY: all build test lint fmt fmt-check tidy coverage coverage-gate \
+.PHONY: all build build-all test lint fmt fmt-check tidy coverage coverage-gate \
+		integration-coverage-gate mutation fuzz quality-gates \
         lefthook-install clean smoke help
 
 all: fmt-check lint test build  ## Run all quality gates and build
@@ -20,6 +24,11 @@ all: fmt-check lint test build  ## Run all quality gates and build
 
 build:  ## Build the binary
 	$(GO) build -trimpath $(LDFLAGS) -o $(BINARY) $(CMD_PKG)
+
+build-all: build ## Alias required by the lefthook release tier
+
+fuzz: ## Run all Fuzz* targets for FUZZ_TIME each (no-op when none exist)
+	@for pkg in $$($(GO) list $(FUZZ_PACKAGES)); do targets=$$($(GO) test -list 'Fuzz.*' "$$pkg" 2>/dev/null | grep '^Fuzz' || true); for target in $$targets; do $(GO) test -run='^$$' -fuzz="^$${target}$$" -fuzztime="$(FUZZ_TIME)" "$$pkg"; done; done
 
 ## ── Testing ────────────────────────────────────────────────────────────────
 
@@ -39,6 +48,28 @@ coverage-gate:  ## Fail if total coverage is below $(COVERAGE_THRESHOLD)%
 	@$(GO) tool cover -func=coverage.out | tee /dev/stderr | \
 		awk '/^total:/ { gsub(/%/, "", $$3); cov = $$3 + 0; if (cov < $(COVERAGE_THRESHOLD)) \
 		{ print "Coverage " cov "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+
+# scan-fix(awk:strnum): same fix as coverage-gate — gsub() clears gawk's STRNUM
+# flag, forcing a lexical string compare instead of numeric; coerce via `+ 0`.
+integration-coverage-gate:  ## Run //go:build integration tests; fail if below $(COVERAGE_THRESHOLD)% (no-op if none exist)
+	@if ! grep -rl '^//go:build integration' --include='*.go' . >/dev/null 2>&1; then \
+		echo "No '//go:build integration' files found — skipping integration-coverage-gate."; \
+		exit 0; \
+	fi; \
+	$(GOTEST) -tags=integration -coverprofile=coverage-integration.out ./...; \
+	$(GO) tool cover -func=coverage-integration.out | tee /dev/stderr | \
+		awk '/^total:/ { gsub(/%/, "", $$3); cov = $$3 + 0; if (cov < $(COVERAGE_THRESHOLD)) \
+		{ print "Integration coverage " cov "% is below threshold $(COVERAGE_THRESHOLD)%"; exit 1 } }'
+
+mutation:  ## Run mutation testing with gremlins (slow — CI only)
+	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+	# scan-fix(gremlins:wildcard): gremlins' CLI doesn't understand Go's `/...`
+	# recursive wildcard (it takes exactly one bare [path] positional arg) — with
+	# it, gremlins matches 0 packages and prints "No results to report" with
+	# exit 0, a silent vacuous pass. A bare directory already recurses correctly.
+	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) ./internal
+
+quality-gates: test coverage-gate  ## Strict pre-promotion gate (test + coverage)
 
 ## ── Code quality ───────────────────────────────────────────────────────────
 
